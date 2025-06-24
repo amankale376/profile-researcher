@@ -417,7 +417,7 @@ class ProfileExtractor {
   private config: z.infer<typeof configSchema>;
   public db: DatabaseManager;
   private searchEngine: GoogleSearchEngine;
-  private apolloAPI?: ApolloAPI;
+  public apolloAPI?: ApolloAPI;
   private nubelaAPI?: NubelaAPI;
   public llmWrapper: LLMAPIWrapper;
 
@@ -652,6 +652,149 @@ export default function createStatelessServer({
     return extractor;
   };
 
+  // Define output schemas
+  const SearchResultSchema = z.object({
+    url: z.string().describe("LinkedIn profile URL"),
+    title: z.string().describe("Profile title from search results"),
+    abstract: z.string().describe("Profile description/snippet"),
+    source_query: z.string().optional().describe("Source query that found this result"),
+  });
+
+  const ProfileDataSchema = z.object({
+    author_profile_url: z.string().describe("LinkedIn profile URL"),
+    author_name: z.string().optional().describe("Full name of the person"),
+    post_details: z.string().optional().describe("Post details if available"),
+    transcript: z.string().optional().describe("Transcript content if available"),
+    authors_desc: z.string().optional().describe("Profile headline/description"),
+    Company: z.string().optional().describe("Current company name"),
+    Job_title: z.string().optional().describe("Current job title"),
+    InteractionStatistic_followers: z.string().optional().describe("Number of followers"),
+    email: z.string().optional().describe("Email address from Apollo API"),
+    phone1: z.string().optional().describe("Primary phone number"),
+    phone2: z.string().optional().describe("Secondary phone number"),
+    about_company: z.string().optional().describe("Company description"),
+    post_summary: z.string().optional().describe("Summary of posts"),
+    transcript_summary: z.string().optional().describe("Summary of transcripts"),
+    author_activity: z.string().optional().describe("Author activity information"),
+    profile_summary: z.string().optional().describe("AI-generated profile summary"),
+  });
+
+  const ContactInfoSchema = z.object({
+    email: z.string().optional().describe("Email address"),
+    phone1: z.string().optional().describe("Primary phone number"),
+    phone2: z.string().optional().describe("Secondary phone number"),
+    about_company: z.string().optional().describe("Company description"),
+    job_title: z.string().optional().describe("Job title"),
+  });
+
+  const SearchProfilesOutputSchema = z.object({
+    success: z.boolean().describe("Whether the search was successful"),
+    results_count: z.number().describe("Number of profiles found"),
+    keywords: z.string().describe("Search keywords used"),
+    profiles: z.array(SearchResultSchema).describe("Array of found LinkedIn profiles"),
+    message: z.string().describe("Status message"),
+  });
+
+  const ExtractProfileOutputSchema = z.object({
+    success: z.boolean().describe("Whether extraction was successful"),
+    processed_count: z.number().describe("Number of profiles successfully processed"),
+    profiles: z.array(ProfileDataSchema).describe("Array of extracted profile data"),
+    message: z.string().describe("Status message"),
+  });
+
+  const MineDataOutputSchema = z.object({
+    success: z.boolean().describe("Whether data mining was successful"),
+    search_results_count: z.number().describe("Number of profiles found in search"),
+    processed_count: z.number().describe("Number of profiles successfully processed"),
+    csv_path: z.string().optional().describe("Path to exported CSV file"),
+    profiles: z.array(ProfileDataSchema).describe("Array of mined profile data"),
+    message: z.string().describe("Detailed status message"),
+  });
+
+  const ContactInfoOutputSchema = z.object({
+    success: z.boolean().describe("Whether contact lookup was successful"),
+    person_name: z.string().describe("Name of the person searched"),
+    company_name: z.string().describe("Company name searched"),
+    contact_info: ContactInfoSchema.describe("Found contact information"),
+    message: z.string().describe("Status message"),
+  });
+
+  const ExportOutputSchema = z.object({
+    success: z.boolean().describe("Whether export was successful"),
+    file_path: z.string().describe("Path to the exported file"),
+    profiles_count: z.number().describe("Number of profiles exported"),
+    message: z.string().describe("Status message"),
+  });
+
+  const StoredProfilesOutputSchema = z.object({
+    success: z.boolean().describe("Whether retrieval was successful"),
+    profiles_count: z.number().describe("Number of stored profiles"),
+    profiles: z.array(ProfileDataSchema).describe("Array of stored profile data"),
+    message: z.string().describe("Status message"),
+  });
+
+  const GenerateQueriesOutputSchema = z.object({
+    success: z.boolean().describe("Whether query generation was successful"),
+    main_query: z.string().describe("Original query used for generation"),
+    generated_count: z.number().describe("Number of queries generated"),
+    queries: z.array(z.string()).describe("Array of generated search queries"),
+    message: z.string().describe("Status message"),
+  });
+
+  const EnrichContactOutputSchema = z.object({
+    success: z.boolean().describe("Whether contact enrichment was successful"),
+    total_profiles: z.number().describe("Total number of profiles processed"),
+    enriched_count: z.number().describe("Number of profiles successfully enriched"),
+    enriched_profiles: z.array(ProfileDataSchema).describe("Array of enriched profile data"),
+    message: z.string().describe("Status message"),
+  });
+
+  const ProfileDetailsOutputSchema = z.object({
+    success: z.boolean().describe("Whether profile details retrieval was successful"),
+    requested_count: z.number().describe("Number of profiles requested"),
+    found_count: z.number().describe("Number of profiles found in database"),
+    profiles: z.array(ProfileDataSchema).describe("Array of found profile data"),
+    not_found_urls: z.array(z.string()).describe("URLs not found in database"),
+    message: z.string().describe("Status message"),
+  });
+
+  const SearchByCriteriaOutputSchema = z.object({
+    success: z.boolean().describe("Whether search by criteria was successful"),
+    total_profiles: z.number().describe("Total number of profiles in database"),
+    filtered_count: z.number().describe("Number of profiles matching criteria"),
+    profiles: z.array(ProfileDataSchema).describe("Array of filtered profile data"),
+    filters_applied: z.object({
+      company: z.string().optional(),
+      job_title: z.string().optional(),
+      has_email: z.boolean().optional(),
+      min_followers: z.number().optional(),
+      keyword: z.string().optional(),
+    }).describe("Filters that were applied"),
+    message: z.string().describe("Status message"),
+  });
+
+  const StatisticsOutputSchema = z.object({
+    success: z.boolean().describe("Whether statistics retrieval was successful"),
+    statistics: z.object({
+      total_profiles: z.number(),
+      profiles_with_email: z.number(),
+      profiles_with_phone: z.number(),
+      profiles_with_company: z.number(),
+      profiles_with_job_title: z.number(),
+      unique_companies: z.number(),
+      unique_job_titles: z.number(),
+      avg_followers: z.number(),
+    }).describe("Database statistics"),
+    top_companies: z.array(z.tuple([z.string(), z.number()])).describe("Top companies by profile count"),
+    message: z.string().describe("Status message"),
+  });
+
+  const ClearDatabaseOutputSchema = z.object({
+    success: z.boolean().describe("Whether database clearing was successful"),
+    cleared_count: z.number().describe("Number of profiles cleared"),
+    message: z.string().describe("Status message"),
+  });
+
   // Search for LinkedIn profiles
   server.tool(
     "search_linkedin_profiles",
@@ -665,6 +808,14 @@ export default function createStatelessServer({
         const profileExtractor = getExtractor();
         const results = await profileExtractor.searchProfiles(keywords, num_results);
         
+        const responseData = {
+          success: true,
+          results_count: results.length,
+          keywords,
+          profiles: results,
+          message: `Successfully found ${results.length} LinkedIn profiles for "${keywords}"`,
+        };
+
         return {
           content: [
             {
@@ -674,8 +825,17 @@ export default function createStatelessServer({
                 .join('\n')}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          results_count: 0,
+          keywords,
+          profiles: [],
+          message: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -683,6 +843,7 @@ export default function createStatelessServer({
               text: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -708,6 +869,13 @@ export default function createStatelessServer({
           }
         }
 
+        const responseData = {
+          success: true,
+          processed_count: profiles.length,
+          profiles,
+          message: `Successfully extracted data from ${profiles.length} out of ${urls.length} profiles`,
+        };
+
         return {
           content: [
             {
@@ -717,8 +885,16 @@ export default function createStatelessServer({
                 .join('\n')}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          processed_count: 0,
+          profiles: [],
+          message: `Error extracting profile data: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -726,6 +902,7 @@ export default function createStatelessServer({
               text: `Error extracting profile data: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -764,12 +941,21 @@ export default function createStatelessServer({
 ${export_csv ? `📄 CSV Export: ${csvPath}` : ''}
 
 Profile Summary:
-${profiles.map((p, i) => 
+${profiles.map((p, i) =>
   `${i + 1}. ${p.author_name} - ${p.Job_title || 'N/A'} at ${p.Company || 'N/A'}
      Email: ${p.email || 'N/A'}
      Followers: ${p.InteractionStatistic_followers || 'N/A'}
      URL: ${p.author_profile_url}`
 ).join('\n\n')}`;
+
+        const responseData = {
+          success: true,
+          search_results_count: searchResults.length,
+          processed_count: profiles.length,
+          csv_path: export_csv ? csvPath : undefined,
+          profiles,
+          message: summary,
+        };
 
         return {
           content: [
@@ -778,8 +964,18 @@ ${profiles.map((p, i) =>
               text: summary,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          search_results_count: 0,
+          processed_count: 0,
+          csv_path: undefined,
+          profiles: [],
+          message: `Error in data mining process: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -787,6 +983,7 @@ ${profiles.map((p, i) =>
               text: `Error in data mining process: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -803,6 +1000,14 @@ ${profiles.map((p, i) =>
     async ({ person_name, company_name }) => {
       try {
         if (!config.apolloApiKey) {
+          const responseData = {
+            success: false,
+            person_name,
+            company_name,
+            contact_info: {},
+            message: "Apollo API key not configured. Please provide apolloApiKey in the configuration.",
+          };
+
           return {
             content: [
               {
@@ -810,11 +1015,20 @@ ${profiles.map((p, i) =>
                 text: "Apollo API key not configured. Please provide apolloApiKey in the configuration.",
               },
             ],
+            structuredContent: responseData,
           };
         }
 
         const apollo = new ApolloAPI(config.apolloApiKey);
         const contactInfo = await apollo.getPersonMatch(person_name, company_name);
+
+        const responseData = {
+          success: true,
+          person_name,
+          company_name,
+          contact_info: contactInfo,
+          message: `Successfully retrieved contact information for ${person_name} at ${company_name}`,
+        };
 
         return {
           content: [
@@ -829,8 +1043,17 @@ Job Title: ${contactInfo.job_title || 'Not found'}
 About Company: ${contactInfo.about_company || 'Not found'}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          person_name,
+          company_name,
+          contact_info: {},
+          message: `Error getting contact info: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -838,6 +1061,7 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
               text: `Error getting contact info: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -853,8 +1077,16 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
     async ({ filename }) => {
       try {
         const profileExtractor = getExtractor();
+        const profiles = await profileExtractor.db.getAllProfiles();
         const csvPath = await profileExtractor.exportToCSV(filename);
         
+        const responseData = {
+          success: true,
+          file_path: csvPath,
+          profiles_count: profiles.length,
+          message: `Successfully exported ${profiles.length} profiles to: ${csvPath}`,
+        };
+
         return {
           content: [
             {
@@ -862,8 +1094,16 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
               text: `Data exported successfully to: ${csvPath}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          file_path: "",
+          profiles_count: 0,
+          message: `Error exporting data: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -871,6 +1111,7 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
               text: `Error exporting data: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -886,6 +1127,13 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
         const profileExtractor = getExtractor();
         const profiles = await profileExtractor.db.getAllProfiles();
         
+        const responseData = {
+          success: true,
+          profiles_count: profiles.length,
+          profiles,
+          message: `Successfully retrieved ${profiles.length} stored profiles from database`,
+        };
+
         return {
           content: [
             {
@@ -895,8 +1143,16 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
                 .join('\n')}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          profiles_count: 0,
+          profiles: [],
+          message: `Error retrieving profiles: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -904,6 +1160,7 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
               text: `Error retrieving profiles: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
         };
       }
     }
@@ -922,6 +1179,14 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
         const profileExtractor = getExtractor();
         const queries = await profileExtractor.llmWrapper.generateSearchQueries(main_query, num_queries);
         
+        const responseData = {
+          success: true,
+          main_query,
+          generated_count: queries.length,
+          queries,
+          message: `Successfully generated ${queries.length} additional search queries for "${main_query}"`,
+        };
+
         return {
           content: [
             {
@@ -931,8 +1196,17 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
                 .join('\n')}`,
             },
           ],
+          structuredContent: responseData,
         };
       } catch (error) {
+        const responseData = {
+          success: false,
+          main_query,
+          generated_count: 0,
+          queries: [],
+          message: `Error generating queries: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
         return {
           content: [
             {
@@ -940,6 +1214,364 @@ About Company: ${contactInfo.about_company || 'Not found'}`,
               text: `Error generating queries: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
+          structuredContent: responseData,
+        };
+      }
+    }
+  );
+
+  // Enrich contact information for existing profiles
+  server.tool(
+    "enrich_contact_info",
+    "Enrich existing profiles with contact information using Apollo API",
+    {
+      profile_urls: z.array(z.string()).optional().describe("Specific profile URLs to enrich (if not provided, enriches all stored profiles)"),
+    },
+    async ({ profile_urls }) => {
+      try {
+        const profileExtractor = getExtractor();
+        const allProfiles = await profileExtractor.db.getAllProfiles();
+        
+        let profilesToEnrich = allProfiles;
+        if (profile_urls && profile_urls.length > 0) {
+          profilesToEnrich = allProfiles.filter(p => profile_urls.includes(p.author_profile_url));
+        }
+
+        let enrichedCount = 0;
+        const enrichedProfiles: ProfileData[] = [];
+
+        for (const profile of profilesToEnrich) {
+          if (profile.author_name && profile.Company && profileExtractor.apolloAPI) {
+            const contactInfo = await profileExtractor.apolloAPI.getPersonMatch(profile.author_name, profile.Company);
+            if (contactInfo.email || contactInfo.phone1) {
+              Object.assign(profile, contactInfo);
+              await profileExtractor.db.saveProfile(profile);
+              enrichedProfiles.push(profile);
+              enrichedCount++;
+            }
+          }
+        }
+
+        const responseData = {
+          success: true,
+          total_profiles: profilesToEnrich.length,
+          enriched_count: enrichedCount,
+          enriched_profiles: enrichedProfiles,
+          message: `Successfully enriched ${enrichedCount} out of ${profilesToEnrich.length} profiles with contact information`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Contact enrichment complete:\n\n✅ Enriched: ${enrichedCount} profiles\n📊 Total processed: ${profilesToEnrich.length} profiles\n\nEnriched profiles:\n${enrichedProfiles.map((p, i) => `${i + 1}. ${p.author_name} - ${p.email || 'No email'}`).join('\n')}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      } catch (error) {
+        const responseData = {
+          success: false,
+          total_profiles: 0,
+          enriched_count: 0,
+          enriched_profiles: [],
+          message: `Error enriching contact info: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error enriching contact info: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      }
+    }
+  );
+
+  // Get detailed profile information
+  server.tool(
+    "get_profile_details",
+    "Get detailed information for specific LinkedIn profiles",
+    {
+      profile_urls: z.array(z.string()).describe("Array of LinkedIn profile URLs to get details for"),
+    },
+    async ({ profile_urls }) => {
+      try {
+        const profileExtractor = getExtractor();
+        const allProfiles = await profileExtractor.db.getAllProfiles();
+        
+        const requestedProfiles = allProfiles.filter(p => profile_urls.includes(p.author_profile_url));
+        const foundUrls = requestedProfiles.map(p => p.author_profile_url);
+        const notFoundUrls = profile_urls.filter(url => !foundUrls.includes(url));
+
+        const responseData = {
+          success: true,
+          requested_count: profile_urls.length,
+          found_count: requestedProfiles.length,
+          profiles: requestedProfiles,
+          not_found_urls: notFoundUrls,
+          message: `Found ${requestedProfiles.length} out of ${profile_urls.length} requested profiles`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Profile Details (${requestedProfiles.length} found):\n\n${requestedProfiles.map((p, i) =>
+                `${i + 1}. ${p.author_name || 'Unknown'}\n   Company: ${p.Company || 'N/A'}\n   Title: ${p.Job_title || 'N/A'}\n   Email: ${p.email || 'N/A'}\n   Followers: ${p.InteractionStatistic_followers || 'N/A'}\n   Description: ${p.authors_desc || 'N/A'}\n   URL: ${p.author_profile_url}\n`
+              ).join('\n')}${notFoundUrls.length > 0 ? `\nNot found in database:\n${notFoundUrls.map(url => `- ${url}`).join('\n')}` : ''}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      } catch (error) {
+        const responseData = {
+          success: false,
+          requested_count: profile_urls.length,
+          found_count: 0,
+          profiles: [],
+          not_found_urls: profile_urls,
+          message: `Error getting profile details: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting profile details: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      }
+    }
+  );
+
+  // Search profiles by criteria
+  server.tool(
+    "search_profiles_by_criteria",
+    "Search stored profiles by specific criteria (company, job title, etc.)",
+    {
+      company: z.string().optional().describe("Filter by company name"),
+      job_title: z.string().optional().describe("Filter by job title"),
+      has_email: z.boolean().optional().describe("Filter profiles that have email addresses"),
+      min_followers: z.number().optional().describe("Minimum number of followers"),
+      keyword: z.string().optional().describe("Search in name, description, or company"),
+    },
+    async ({ company, job_title, has_email, min_followers, keyword }) => {
+      try {
+        const profileExtractor = getExtractor();
+        let profiles = await profileExtractor.db.getAllProfiles();
+        
+        // Apply filters
+        if (company) {
+          profiles = profiles.filter(p => p.Company?.toLowerCase().includes(company.toLowerCase()));
+        }
+        
+        if (job_title) {
+          profiles = profiles.filter(p => p.Job_title?.toLowerCase().includes(job_title.toLowerCase()));
+        }
+        
+        if (has_email !== undefined) {
+          profiles = profiles.filter(p => has_email ? !!p.email : !p.email);
+        }
+        
+        if (min_followers !== undefined) {
+          profiles = profiles.filter(p => {
+            const followers = parseInt(p.InteractionStatistic_followers || '0');
+            return followers >= min_followers;
+          });
+        }
+        
+        if (keyword) {
+          const searchTerm = keyword.toLowerCase();
+          profiles = profiles.filter(p =>
+            p.author_name?.toLowerCase().includes(searchTerm) ||
+            p.authors_desc?.toLowerCase().includes(searchTerm) ||
+            p.Company?.toLowerCase().includes(searchTerm)
+          );
+        }
+
+        const responseData = {
+          success: true,
+          total_profiles: (await profileExtractor.db.getAllProfiles()).length,
+          filtered_count: profiles.length,
+          profiles,
+          filters_applied: { company, job_title, has_email, min_followers, keyword },
+          message: `Found ${profiles.length} profiles matching the specified criteria`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Search Results (${profiles.length} profiles found):\n\nFilters applied:\n${company ? `- Company: ${company}\n` : ''}${job_title ? `- Job Title: ${job_title}\n` : ''}${has_email !== undefined ? `- Has Email: ${has_email}\n` : ''}${min_followers !== undefined ? `- Min Followers: ${min_followers}\n` : ''}${keyword ? `- Keyword: ${keyword}\n` : ''}\n${profiles.map((p, i) =>
+                `${i + 1}. ${p.author_name} - ${p.Job_title || 'N/A'} at ${p.Company || 'N/A'}\n   Email: ${p.email || 'N/A'}\n   Followers: ${p.InteractionStatistic_followers || 'N/A'}\n   URL: ${p.author_profile_url}\n`
+              ).join('\n')}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      } catch (error) {
+        const responseData = {
+          success: false,
+          total_profiles: 0,
+          filtered_count: 0,
+          profiles: [],
+          filters_applied: { company, job_title, has_email, min_followers, keyword },
+          message: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      }
+    }
+  );
+
+  // Get search statistics
+  server.tool(
+    "get_search_statistics",
+    "Get statistics about stored profiles and search performance",
+    {},
+    async () => {
+      try {
+        const profileExtractor = getExtractor();
+        const profiles = await profileExtractor.db.getAllProfiles();
+        
+        const stats = {
+          total_profiles: profiles.length,
+          profiles_with_email: profiles.filter(p => !!p.email).length,
+          profiles_with_phone: profiles.filter(p => !!p.phone1 || !!p.phone2).length,
+          profiles_with_company: profiles.filter(p => !!p.Company).length,
+          profiles_with_job_title: profiles.filter(p => !!p.Job_title).length,
+          unique_companies: [...new Set(profiles.map(p => p.Company).filter(Boolean))].length,
+          unique_job_titles: [...new Set(profiles.map(p => p.Job_title).filter(Boolean))].length,
+          avg_followers: profiles.length > 0 ? Math.round(profiles.reduce((sum, p) => sum + parseInt(p.InteractionStatistic_followers || '0'), 0) / profiles.length) : 0,
+        };
+
+        const topCompanies = profiles
+          .filter(p => p.Company)
+          .reduce((acc, p) => {
+            acc[p.Company!] = (acc[p.Company!] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+        const topCompaniesArray = Object.entries(topCompanies)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5);
+
+        const responseData = {
+          success: true,
+          statistics: stats,
+          top_companies: topCompaniesArray,
+          message: `Database contains ${stats.total_profiles} profiles with comprehensive statistics`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `📊 Profile Database Statistics:\n\n🔢 Total Profiles: ${stats.total_profiles}\n📧 With Email: ${stats.profiles_with_email} (${Math.round(stats.profiles_with_email/stats.total_profiles*100)}%)\n📱 With Phone: ${stats.profiles_with_phone} (${Math.round(stats.profiles_with_phone/stats.total_profiles*100)}%)\n🏢 With Company: ${stats.profiles_with_company} (${Math.round(stats.profiles_with_company/stats.total_profiles*100)}%)\n💼 With Job Title: ${stats.profiles_with_job_title} (${Math.round(stats.profiles_with_job_title/stats.total_profiles*100)}%)\n\n🏢 Unique Companies: ${stats.unique_companies}\n💼 Unique Job Titles: ${stats.unique_job_titles}\n👥 Average Followers: ${stats.avg_followers}\n\n🔝 Top Companies:\n${topCompaniesArray.map(([company, count], i) => `${i + 1}. ${company}: ${count} profiles`).join('\n')}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      } catch (error) {
+        const responseData = {
+          success: false,
+          statistics: {},
+          top_companies: [],
+          message: `Error getting statistics: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting statistics: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      }
+    }
+  );
+
+  // Clear database
+  server.tool(
+    "clear_database",
+    "Clear all stored profile data from the database",
+    {
+      confirm: z.boolean().describe("Confirmation flag - must be true to proceed with clearing"),
+    },
+    async ({ confirm }) => {
+      try {
+        if (!confirm) {
+          const responseData = {
+            success: false,
+            cleared_count: 0,
+            message: "Database clear cancelled - confirmation flag must be set to true",
+          };
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: "⚠️ Database clear cancelled. Set confirm=true to proceed with clearing all profile data.",
+              },
+            ],
+            structuredContent: responseData,
+          };
+        }
+
+        const profileExtractor = getExtractor();
+        const profiles = await profileExtractor.db.getAllProfiles();
+        const profileCount = profiles.length;
+        
+        // Clear the database by saving an empty array
+        profileExtractor.db['profiles'] = [];
+        profileExtractor.db['saveProfiles']();
+
+        const responseData = {
+          success: true,
+          cleared_count: profileCount,
+          message: `Successfully cleared ${profileCount} profiles from the database`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `🗑️ Database cleared successfully!\n\n📊 Removed: ${profileCount} profiles\n✅ Database is now empty`,
+            },
+          ],
+          structuredContent: responseData,
+        };
+      } catch (error) {
+        const responseData = {
+          success: false,
+          cleared_count: 0,
+          message: `Error clearing database: ${error instanceof Error ? error.message : String(error)}`,
+        };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error clearing database: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          structuredContent: responseData,
         };
       }
     }
