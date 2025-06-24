@@ -1,0 +1,34 @@
+{
+	"name": "profile-searcher",
+	"version": "1.0.0",
+	"description": "LinkedIn Profile Data Mining MCP Server",
+	"main": "index.js",
+	"module": "./src/index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "npx @smithery/cli dev"
+	},
+	"keywords": [
+		"linkedin",
+		"data-mining",
+		"profiles",
+		"apollo",
+		"search"
+	],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.1",
+		"axios": "^1.6.0",
+		"cheerio": "^1.0.0-rc.12",
+		"csv-writer": "^1.6.0",
+		"dotenv": "^16.5.0",
+		"openai": "^4.20.1",
+		"zod": "^3.25.46"
+	},
+	"devDependencies": {
+		"@smithery/cli": "^1.2.4",
+		"@types/node": "^20.0.0",
+		"tsx": "^4.19.4"
+	}
+}
