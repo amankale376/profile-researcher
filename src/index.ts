@@ -816,16 +816,27 @@ export default function createStatelessServer({
           message: `Successfully found ${results.length} LinkedIn profiles for "${keywords}"`,
         };
 
+        // Return structured data as array of profile objects
+        const profileObjects = results.map((result, index) => ({
+          id: index + 1,
+          name: result.title.split(' – ')[0] || result.title.split(' - ')[0] || result.title,
+          title: result.title,
+          url: result.url,
+          abstract: result.abstract,
+          source_query: result.source_query || 'main'
+        }));
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${results.length} LinkedIn profiles for "${keywords}":\n\n${results
-                .map((r, i) => `${i + 1}. ${r.title}\n   URL: ${r.url}\n   Abstract: ${r.abstract}\n`)
-                .join('\n')}`,
+              text: JSON.stringify(profileObjects, null, 2),
             },
           ],
-          structuredContent: responseData,
+          structuredContent: {
+            ...responseData,
+            profiles: profileObjects
+          },
         };
       } catch (error) {
         const responseData = {
@@ -840,7 +851,11 @@ export default function createStatelessServer({
           content: [
             {
               type: "text",
-              text: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
+              text: JSON.stringify({
+                error: true,
+                message: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
+                profiles: []
+              }, null, 2),
             },
           ],
           structuredContent: responseData,
