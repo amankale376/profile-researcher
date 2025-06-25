@@ -830,12 +830,17 @@ export default function createStatelessServer({
           content: [
             {
               type: "text",
-              text: JSON.stringify(profileObjects, null, 2),
+              text: `Found ${results.length} LinkedIn profiles for "${keywords}":\n\n${profileObjects
+                .map((p) => `${p.id}. ${p.name}\n   URL: ${p.url}\n   Abstract: ${p.abstract}\n`)
+                .join('\n')}`,
             },
           ],
           structuredContent: {
-            ...responseData,
-            profiles: profileObjects
+            success: true,
+            results_count: results.length,
+            keywords,
+            profiles: profileObjects,
+            message: `Successfully found ${results.length} LinkedIn profiles for "${keywords}"`,
           },
         };
       } catch (error) {
@@ -851,11 +856,7 @@ export default function createStatelessServer({
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                error: true,
-                message: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
-                profiles: []
-              }, null, 2),
+              text: `Error searching profiles: ${error instanceof Error ? error.message : String(error)}`,
             },
           ],
           structuredContent: responseData,
