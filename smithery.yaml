@@ -1,44 +1,43 @@
 runtime: typescript
 
-startCommand:
-  type: stdio
-  configSchema:
-    type: object
-    required:
-      - APOLLO_API_KEY
-      - OPENAI_API_KEY
-      - NUBELA_API_KEY
-      - GEMINI_API_KEY
-      - OPENROUTER_API_KEY
-      - OLLAMA_BASE_URL
-      - DEBUG
-    properties:
-      APOLLO_API_KEY:
-        type: string
-        description: "Apollo.io API Key (Required for contact information)"
-      OPENAI_API_KEY:
-        type: string
-        description: "OpenAI API Key (Required for AI features)"
-      NUBELA_API_KEY:
-        type: string
-        description: "Nubela Proxycurl API Key (Required - fallback for profile extraction)"
-      GEMINI_API_KEY:
-        type: string
-        description: "Google Gemini API Key (Required - alternative LLM)"
-      OPENROUTER_API_KEY:
-        type: string
-        description: "OpenRouter API Key (Required - alternative LLM)"
-      OLLAMA_BASE_URL:
-        type: string
-        description: "Ollama Base URL (Required - local LLM)"
-      DEBUG:
-        type: string
-        description: "Debug mode (Required)"
-  exampleConfig:
-    APOLLO_API_KEY: your_apollo_api_key_here
-    OPENAI_API_KEY: your_openai_api_key_here
-    NUBELA_API_KEY: your_nubela_api_key_here
-    GEMINI_API_KEY: your_gemini_api_key_here
-    OPENROUTER_API_KEY: your_openrouter_api_key_here
-    OLLAMA_BASE_URL: http://localhost:11434
-    DEBUG: false
+configSchema:
+  type: object
+  required:
+    - APOLLO_API_KEY
+    - OPENAI_API_KEY
+    - NUBELA_API_KEY
+    - GEMINI_API_KEY
+    - OPENROUTER_API_KEY
+    - OLLAMA_BASE_URL
+    - DEBUG
+  properties:
+    APOLLO_API_KEY:
+      type: string
+      description: "Apollo.io API Key (Required for contact information)"
+    OPENAI_API_KEY:
+      type: string
+      description: "OpenAI API Key (Required for AI features)"
+    NUBELA_API_KEY:
+      type: string
+      description: "Nubela Proxycurl API Key (Required - fallback for profile extraction)"
+    GEMINI_API_KEY:
+      type: string
+      description: "Google Gemini API Key (Required - alternative LLM)"
+    OPENROUTER_API_KEY:
+      type: string
+      description: "OpenRouter API Key (Required - alternative LLM)"
+    OLLAMA_BASE_URL:
+      type: string
+      description: "Ollama Base URL (Required - local LLM)"
+    DEBUG:
+      type: string
+      description: "Debug mode (Required)"
+
+exampleConfig:
+  APOLLO_API_KEY: your_apollo_api_key_here
+  OPENAI_API_KEY: your_openai_api_key_here
+  NUBELA_API_KEY: your_nubela_api_key_here
+  GEMINI_API_KEY: your_gemini_api_key_here
+  OPENROUTER_API_KEY: your_openrouter_api_key_here
+  OLLAMA_BASE_URL: http://localhost:11434
+  DEBUG: false
