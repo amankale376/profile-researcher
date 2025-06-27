@@ -16,15 +16,15 @@ dotenv.config();
 // Get current directory - compatible with both CommonJS and ES modules
 const __dirname = __filename ? dirname(__filename) : process.cwd();
 
-// Configuration schema - reads from environment variables with fallbacks
+// Configuration schema - all fields are required
 export const configSchema = z.object({
-  debug: z.boolean().default(process.env.DEBUG === 'true').describe("Enable debug logging"),
-  apolloApiKey: z.string().default(process.env.APOLLO_API_KEY || '').describe("Apollo.io API key"),
-  nubelaApiKey: z.string().default(process.env.NUBELA_API_KEY || '').describe("Nubela Proxycurl API key"),
-  openaiApiKey: z.string().default(process.env.OPENAI_API_KEY || '').describe("OpenAI API key"),
-  geminiApiKey: z.string().default(process.env.GEMINI_API_KEY || '').describe("Google Gemini API key"),
-  openrouterApiKey: z.string().default(process.env.OPENROUTER_API_KEY || '').describe("OpenRouter API key"),
-  ollamaBaseUrl: z.string().default(process.env.OLLAMA_BASE_URL || 'http://localhost:11434').describe("Ollama base URL"),
+  debug: z.boolean().describe("Enable debug logging"),
+  apolloApiKey: z.string().min(1, "Apollo API key is required").describe("Apollo.io API key"),
+  nubelaApiKey: z.string().min(1, "Nubela API key is required").describe("Nubela Proxycurl API key"),
+  openaiApiKey: z.string().min(1, "OpenAI API key is required").describe("OpenAI API key"),
+  geminiApiKey: z.string().min(1, "Gemini API key is required").describe("Google Gemini API key"),
+  openrouterApiKey: z.string().min(1, "OpenRouter API key is required").describe("OpenRouter API key"),
+  ollamaBaseUrl: z.string().min(1, "Ollama base URL is required").describe("Ollama base URL"),
 });
 
 // Types
